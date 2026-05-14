@@ -197,7 +197,7 @@ def configure_queue_options(
     for key, value in options.items():
         update_option(client, key, value)
     if args.channel_rpm is None:
-        log(f"queue options enabled with default channel rpm={args.default_channel_rpm}; channel rpm JSON={{{{}}}}")
+        log(f"queue options enabled with default channel rpm={args.default_channel_rpm}; channel rpm JSON={{}}")
     else:
         log(f"queue options enabled with per-channel rpm override={args.channel_rpm}")
 

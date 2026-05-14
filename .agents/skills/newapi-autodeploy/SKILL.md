@@ -98,7 +98,7 @@ Useful variables:
 - `NEWAPI_QUEUE_TEST_MOCK_TPS`: mock upstream completion speed in tokens per second; defaults to `10`.
 - `NEWAPI_QUEUE_TEST_MOCK_OK_COUNT`: mock upstream completion length; defaults to `100` `OK` tokens.
 - `NEWAPI_QUEUE_TEST_DEFAULT_CHANNEL_RPM`: fallback channel queue send RPM; defaults to `80`.
-- `NEWAPI_QUEUE_TEST_CHANNEL_RPM`: optional per-channel queue send RPM override for seeded channels. Unset by default, so auto-deploy clears `RequestQueueChannelRPM` instead of writing channel-name JSON.
+- `NEWAPI_QUEUE_TEST_CHANNEL_RPM`: optional per-channel queue send RPM override for seeded channels. Unset by default, so auto-deploy writes `RequestQueueChannelRPM={}` instead of channel-name JSON.
 - `NEWAPI_QUEUE_TEST_MAX_CHANNEL_PENDING`: per-channel queue length before 429; defaults to `512`.
 - `NEWAPI_QUEUE_TEST_DEFAULT_USER_MAX_PENDING`: per-user queue length across all channels before 429; defaults to `32`.
 - `NEWAPI_QUEUE_TEST_SCHEDULE_STRATEGY`: scheduler strategy for queue tests, `fifo` or `user_loop`; defaults to `user_loop`.

@@ -9,7 +9,7 @@ Use this skill for local, disposable request queue experiments. It provides four
 
 - `scripts/mock_openai_servers.py`: start one or more OpenAI-compatible mock upstreams on `127.0.0.1:<port>`.
   POST requests ignore the input body and return 100 `OK` tokens by default for both streaming and non-streaming calls, paced at 10 tokens/s unless overridden.
-- `scripts/seed_queue_test_data.py`: enable queue settings, create/update local channels, create/update test users, and write API tokens for load testing. By default it uses `RequestQueueDefaultChannelRPM` and clears `RequestQueueChannelRPM`; pass `--channel-rpm` only when you intentionally want per-channel JSON overrides.
+- `scripts/seed_queue_test_data.py`: enable queue settings, create/update local channels, create/update test users, and write API tokens for load testing. By default it uses `RequestQueueDefaultChannelRPM` and writes `RequestQueueChannelRPM` as `{}`; pass `--channel-rpm` only when you intentionally want per-channel JSON overrides.
 - `scripts/run_queue_loadtest.py`: run concurrent OpenAI chat requests from many users at configurable offered RPMs. By default it randomly mixes streaming and non-streaming requests.
   Non-2xx responses are summarized at the end with sampled response bodies so 502/429 causes can be diagnosed from the terminal output.
 - `scripts/test_queue_disabled_smoke.py`: disable request scheduling, send a small mixed stream/non-stream request batch, and assert the selected test users do not enter the request queue.
@@ -59,7 +59,7 @@ python3 .agents/skills/newapi-queue-loadtest/scripts/run_queue_loadtest.py \
 - Per-user offered load: `5` RPM
 - Stream mix: random, with roughly 50% streaming and 50% non-streaming requests. Use `--stream-ratio` to change the streaming probability, `--stream-mode stream` for all streaming, or `--stream-mode non-stream` for all non-streaming. The legacy `--stream` flag still forces all streaming.
 - Default channel queue RPM: `80`
-- Per-channel queue RPM JSON: empty by default. Set `NEWAPI_QUEUE_TEST_CHANNEL_RPM` or pass `--channel-rpm` to intentionally write channel-name overrides such as `{"newapi-queue-12000":80}`.
+- Per-channel queue RPM JSON: `{}` by default. Set `NEWAPI_QUEUE_TEST_CHANNEL_RPM` or pass `--channel-rpm` to intentionally write channel-name overrides such as `{"newapi-queue-12000":80}`.
 - Scheduler strategy: `user_loop` by default; use `fifo` to preserve strict arrival order.
 - Max queued requests per channel: `512`
 - Max queued requests per user across all channels: `32`
@@ -68,7 +68,7 @@ python3 .agents/skills/newapi-queue-loadtest/scripts/run_queue_loadtest.py \
 - Token file: `.codex-deploy/queue-loadtest/tokens.json`
 
 The seed script is idempotent: rerunning it updates existing `newapi-queue-<port>` channels and `test<N>` users instead of intentionally creating duplicates.
-Channel RPM overrides are keyed by channel name in system settings JSON, so no channel schema field is required. The default test profile leaves that JSON empty and uses the global default channel RPM instead.
+Channel RPM overrides are keyed by channel name in system settings JSON, so no channel schema field is required. The default test profile leaves that JSON as `{}` and uses the global default channel RPM instead.
 
 ## Standard Queue Test Profile
 
