@@ -515,6 +515,12 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 		}
 	}
 
+	lease, queueErr := service.RequestQueueAcquire(c, info)
+	if queueErr != nil {
+		return nil, queueErr
+	}
+	defer lease.Release()
+
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.LogError(c, "do request failed: "+err.Error())

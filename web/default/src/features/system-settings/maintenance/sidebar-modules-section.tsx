@@ -124,6 +124,10 @@ export function SidebarModulesSection({
         title: t('Channels'),
         description: t('Configure upstream providers and routing.'),
       },
+      queue_log: {
+        title: t('Queue Logs'),
+        description: t('View requests currently waiting in the scheduler.'),
+      },
       models: {
         title: t('Models'),
         description: t('Manage catalog visibility and pricing.'),

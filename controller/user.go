@@ -492,6 +492,7 @@ func generateDefaultSidebarConfig(userRole int) string {
 		defaultConfig["admin"] = map[string]interface{}{
 			"enabled":    true,
 			"channel":    true,
+			"queue_log":  true,
 			"models":     true,
 			"redemption": true,
 			"user":       true,
@@ -502,6 +503,7 @@ func generateDefaultSidebarConfig(userRole int) string {
 		defaultConfig["admin"] = map[string]interface{}{
 			"enabled":    true,
 			"channel":    true,
+			"queue_log":  true,
 			"models":     true,
 			"redemption": true,
 			"user":       true,
@@ -963,6 +965,9 @@ func ManageUser(c *gin.Context) {
 		default:
 			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 			return
+		}
+		if err := model.InvalidateUserCache(user.Id); err != nil {
+			common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d after quota change: %s", user.Id, err.Error()))
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,

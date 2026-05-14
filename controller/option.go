@@ -286,6 +286,42 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "RequestQueueDefaultChannelRPM", "RequestQueueMaxChannelPending", "RequestQueueDefaultUserMaxPending":
+		err = setting.CheckRequestQueueIntegerOption(option.Key, option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "RequestQueueChannelRPM":
+		err = setting.CheckRequestQueueChannelRPM(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "RequestQueueUserMaxPending":
+		err = setting.CheckRequestQueueUserMaxPending(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "RequestQueueScheduleStrategy":
+		err = setting.CheckRequestQueueScheduleStrategy(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {

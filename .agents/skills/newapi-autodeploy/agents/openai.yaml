@@ -1,0 +1,4 @@
+interface:
+  display_name: "new-api Auto-Deploy"
+  short_description: "Build frontend assets or restart new-api locally"
+  default_prompt: "Use $newapi-autodeploy to build frontend dist assets or rebuild and restart local new-api with SQLite."

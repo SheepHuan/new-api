@@ -318,6 +318,13 @@ export type SecuritySettings = {
   ModelRequestRateLimitSuccessCount: number
   ModelRequestRateLimitDurationMinutes: number
   ModelRequestRateLimitGroup: string
+  RequestQueueEnabled: boolean
+  RequestQueueDefaultChannelRPM: number
+  RequestQueueMaxChannelPending: number
+  RequestQueueDefaultUserMaxPending: number
+  RequestQueueScheduleStrategy: 'fifo' | 'user_loop'
+  RequestQueueChannelRPM: string
+  RequestQueueUserMaxPending: string
   CheckSensitiveEnabled: boolean
   CheckSensitiveOnPromptEnabled: boolean
   SensitiveWords: string

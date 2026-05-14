@@ -33,13 +33,21 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { RateLimitVisualEditor } from './rate-limit-visual-editor'
 
-const isValidJSON = (value: string | undefined) => {
+const isValidRateLimitGroupJSON = (value: string | undefined) => {
   if (!value || value.trim() === '') return true
   try {
     const parsed = JSON.parse(value)
@@ -58,16 +66,50 @@ const isValidJSON = (value: string | undefined) => {
   }
 }
 
+const isValidRequestQueueIntMapJSON = (value: string | undefined) => {
+  if (!value || value.trim() === '') return true
+  try {
+    const parsed = JSON.parse(value)
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return false
+    }
+    for (const [, val] of Object.entries(parsed)) {
+      if (typeof val !== 'number' || !Number.isInteger(val)) return false
+      if (val < 0 || val > 2147483647) return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 const createRateLimitSchema = (t: (key: string) => string) =>
   z.object({
     ModelRequestRateLimitEnabled: z.boolean(),
     ModelRequestRateLimitDurationMinutes: z.number().min(0),
     ModelRequestRateLimitCount: z.number().min(0).max(100000000),
     ModelRequestRateLimitSuccessCount: z.number().min(1).max(100000000),
+    RequestQueueEnabled: z.boolean(),
+    RequestQueueDefaultChannelRPM: z.number().min(0).max(100000000),
+    RequestQueueMaxChannelPending: z.number().min(0).max(100000000),
+    RequestQueueDefaultUserMaxPending: z.number().min(0).max(100000000),
+    RequestQueueScheduleStrategy: z.enum(['fifo', 'user_loop']),
+    RequestQueueChannelRPM: z
+      .string()
+      .optional()
+      .refine(isValidRequestQueueIntMapJSON, {
+        message: t('Invalid JSON format or values out of allowed range'),
+      }),
+    RequestQueueUserMaxPending: z
+      .string()
+      .optional()
+      .refine(isValidRequestQueueIntMapJSON, {
+        message: t('Invalid JSON format or values out of allowed range'),
+      }),
     ModelRequestRateLimitGroup: z
       .string()
       .optional()
-      .refine(isValidJSON, {
+      .refine(isValidRateLimitGroupJSON, {
         message: t('Invalid JSON format or values out of allowed range'),
       }),
   })
@@ -115,30 +157,257 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-          <FormField
-            control={form.control}
-            name='ModelRequestRateLimitEnabled'
-            render={({ field }) => (
-              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                <div className='space-y-0.5'>
-                  <FormLabel className='text-base'>
-                    {t('Enable rate limiting')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t(
-                      'This controls model request rate limiting. Web/API route throttling is configured by environment variables and may still return 429.'
-                    )}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <div className='grid gap-4 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='ModelRequestRateLimitEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable rate limiting')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'This controls model request rate limiting. Web/API route throttling is configured by environment variables and may still return 429.'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked)
+                        if (checked) {
+                          form.setValue('RequestQueueEnabled', false, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      }}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='RequestQueueEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable request scheduler')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Apply channel RPM limits before forwarding upstream.'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked)
+                        if (checked) {
+                          form.setValue('ModelRequestRateLimitEnabled', false, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      }}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='space-y-4 rounded-lg border p-4'>
+            <div>
+              <h3 className='text-sm font-medium'>{t('Request Queue')}</h3>
+              <p className='text-muted-foreground text-sm'>
+                {t('Control upstream dispatch speed by channel RPM.')}
+              </p>
+            </div>
+
+            <div className='grid gap-4 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='RequestQueueDefaultChannelRPM'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Default channel RPM')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={0}
+                        max={100000000}
+                        step={1}
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>{t('0 = unlimited')}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='RequestQueueScheduleStrategy'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Scheduler strategy')}</FormLabel>
+                    <Select
+                      items={[
+                        { value: 'fifo', label: t('FIFO') },
+                        { value: 'user_loop', label: t('User loop') },
+                      ]}
+                      value={field.value || 'fifo'}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className='w-full'>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent alignItemWithTrigger={false}>
+                        <SelectGroup>
+                          <SelectItem value='fifo'>{t('FIFO')}</SelectItem>
+                          <SelectItem value='user_loop'>
+                            {t('User loop')}
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t(
+                        "FIFO preserves arrival order. User loop rotates through queued users and sends each user's earliest queued request. Changes apply on the next dispatch."
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='grid gap-4 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='RequestQueueMaxChannelPending'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Max channel pending')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={0}
+                        max={100000000}
+                        step={1}
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Maximum requests allowed to wait in one channel queue; new requests return 429 when full. 0 = unlimited.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='RequestQueueDefaultUserMaxPending'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('Default user max queued requests')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={0}
+                        max={100000000}
+                        step={1}
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Maximum queued requests allowed per user across all channel queues; new requests return 429 when the user limit is reached. 0 = unlimited.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='grid gap-4 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='RequestQueueChannelRPM'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Channel RPM overrides')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={5}
+                        className='font-mono text-sm'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'JSON object: channel name to total queued dispatch RPM'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='RequestQueueUserMaxPending'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('User max queued requests overrides')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={5}
+                        placeholder={`{\n  "test1": 8,\n  "test2": 16\n}`}
+                        className='font-mono text-sm'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'JSON object: username to max queued requests. User-specific values override the default; use 0 for unlimited.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
 
           <div className='grid gap-4 md:grid-cols-3'>
             <FormField

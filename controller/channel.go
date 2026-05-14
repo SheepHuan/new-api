@@ -68,6 +68,23 @@ func clearChannelInfo(channel *model.Channel) {
 	}
 }
 
+func attachRequestQueuePendingCounts(channels []*model.Channel) {
+	ids := make([]int, 0, len(channels))
+	for _, channel := range channels {
+		if channel == nil {
+			continue
+		}
+		ids = append(ids, channel.Id)
+	}
+	counts := service.GetRequestQueuePendingCounts(ids)
+	for _, channel := range channels {
+		if channel == nil {
+			continue
+		}
+		channel.RequestQueuePendingCount = counts[channel.Id]
+	}
+}
+
 func GetAllChannels(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	channelData := make([]*model.Channel, 0)
@@ -143,6 +160,7 @@ func GetAllChannels(c *gin.Context) {
 	for _, datum := range channelData {
 		clearChannelInfo(datum)
 	}
+	attachRequestQueuePendingCounts(channelData)
 
 	countQuery := model.DB.Model(&model.Channel{})
 	if statusFilter == common.ChannelStatusEnabled {
@@ -342,6 +360,7 @@ func SearchChannels(c *gin.Context) {
 	for _, datum := range pagedData {
 		clearChannelInfo(datum)
 	}
+	attachRequestQueuePendingCounts(pagedData)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -368,6 +387,7 @@ func GetChannel(c *gin.Context) {
 	}
 	if channel != nil {
 		clearChannelInfo(channel)
+		attachRequestQueuePendingCounts([]*model.Channel{channel})
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

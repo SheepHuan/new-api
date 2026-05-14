@@ -71,6 +71,7 @@ export const channelSchema = z.object({
     multi_key_mode: 'random',
   }),
   settings: z.string().default('{}'), // other_settings JSON
+  request_queue_pending_count: z.number().default(0),
 })
 
 export type Channel = z.infer<typeof channelSchema>

@@ -37,6 +37,14 @@ const SECURITY_SECTIONS = [
           ModelRequestRateLimitDurationMinutes:
             settings.ModelRequestRateLimitDurationMinutes,
           ModelRequestRateLimitGroup: settings.ModelRequestRateLimitGroup,
+          RequestQueueEnabled: settings.RequestQueueEnabled,
+          RequestQueueDefaultChannelRPM: settings.RequestQueueDefaultChannelRPM,
+          RequestQueueMaxChannelPending: settings.RequestQueueMaxChannelPending,
+          RequestQueueDefaultUserMaxPending:
+            settings.RequestQueueDefaultUserMaxPending,
+          RequestQueueScheduleStrategy: settings.RequestQueueScheduleStrategy,
+          RequestQueueChannelRPM: settings.RequestQueueChannelRPM,
+          RequestQueueUserMaxPending: settings.RequestQueueUserMaxPending,
         }}
       />
     ),

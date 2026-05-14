@@ -141,6 +141,13 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
+	common.OptionMap["RequestQueueEnabled"] = strconv.FormatBool(setting.RequestQueueEnabled)
+	common.OptionMap["RequestQueueDefaultChannelRPM"] = strconv.Itoa(setting.RequestQueueDefaultChannelRPM)
+	common.OptionMap["RequestQueueMaxChannelPending"] = strconv.Itoa(setting.RequestQueueMaxChannelPending)
+	common.OptionMap["RequestQueueDefaultUserMaxPending"] = strconv.Itoa(setting.RequestQueueDefaultUserMaxPending)
+	common.OptionMap["RequestQueueChannelRPM"] = setting.RequestQueueChannelRPM2JSONString()
+	common.OptionMap["RequestQueueUserMaxPending"] = setting.RequestQueueUserMaxPending2JSONString()
+	common.OptionMap["RequestQueueScheduleStrategy"] = setting.RequestQueueScheduleStrategy
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -196,6 +203,7 @@ func loadOptionsFromDatabase() {
 			common.SysLog("failed to update option map: " + err.Error())
 		}
 	}
+	enforceRateLimitSchedulerMutualExclusion()
 }
 
 func SyncOptions(frequency int) {
@@ -207,19 +215,57 @@ func SyncOptions(frequency int) {
 }
 
 func UpdateOption(key string, value string) error {
-	// Save to database first
+	if err := saveOptionValue(key, value); err != nil {
+		return err
+	}
+	if peerKey, peerValue, ok := rateLimitSchedulerMutualExclusionPeer(key, value); ok {
+		return saveOptionValue(peerKey, peerValue)
+	}
+	return nil
+}
+
+func saveOptionValue(key string, value string) error {
 	option := Option{
 		Key: key,
 	}
 	// https://gorm.io/docs/update.html#Save-All-Fields
-	DB.FirstOrCreate(&option, Option{Key: key})
+	if err := DB.FirstOrCreate(&option, Option{Key: key}).Error; err != nil {
+		return err
+	}
 	option.Value = value
 	// Save is a combination function.
 	// If save value does not contain primary key, it will execute Create,
 	// otherwise it will execute Update (with all fields).
-	DB.Save(&option)
+	if err := DB.Save(&option).Error; err != nil {
+		return err
+	}
 	// Update OptionMap
 	return updateOptionMap(key, value)
+}
+
+func rateLimitSchedulerMutualExclusionPeer(key string, value string) (string, string, bool) {
+	if value != "true" {
+		return "", "", false
+	}
+	switch key {
+	case "ModelRequestRateLimitEnabled":
+		return "RequestQueueEnabled", "false", true
+	case "RequestQueueEnabled":
+		return "ModelRequestRateLimitEnabled", "false", true
+	default:
+		return "", "", false
+	}
+}
+
+func enforceRateLimitSchedulerMutualExclusion() {
+	common.OptionMapRWMutex.Lock()
+	defer common.OptionMapRWMutex.Unlock()
+
+	if common.OptionMap["ModelRequestRateLimitEnabled"] != "true" || common.OptionMap["RequestQueueEnabled"] != "true" {
+		return
+	}
+	common.OptionMap["RequestQueueEnabled"] = "false"
+	setting.SetRequestQueueEnabled(false)
 }
 
 func updateOptionMap(key string, value string) (err error) {
@@ -317,6 +363,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.CheckSensitiveOnPromptEnabled = boolValue
 		case "ModelRequestRateLimitEnabled":
 			setting.ModelRequestRateLimitEnabled = boolValue
+		case "RequestQueueEnabled":
+			setting.SetRequestQueueEnabled(boolValue)
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
@@ -493,6 +541,25 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ModelRequestRateLimitSuccessCount, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitGroup":
 		err = setting.UpdateModelRequestRateLimitGroupByJSONString(value)
+	case "RequestQueueDefaultChannelRPM":
+		intValue, _ := strconv.Atoi(value)
+		setting.SetRequestQueueDefaultChannelRPM(intValue)
+	case "RequestQueueMaxChannelPending":
+		intValue, _ := strconv.Atoi(value)
+		setting.SetRequestQueueMaxChannelPending(intValue)
+	case "RequestQueueDefaultUserMaxPending":
+		intValue, _ := strconv.Atoi(value)
+		setting.SetRequestQueueDefaultUserMaxPending(intValue)
+	case "RequestQueueChannelRPM":
+		err = setting.UpdateRequestQueueChannelRPMByJSONString(value)
+		if err == nil {
+			common.OptionMap[key] = setting.RequestQueueChannelRPM2JSONString()
+		}
+	case "RequestQueueUserMaxPending":
+		err = setting.UpdateRequestQueueUserMaxPendingByJSONString(value)
+	case "RequestQueueScheduleStrategy":
+		setting.SetRequestQueueScheduleStrategy(value)
+		common.OptionMap[key] = setting.RequestQueueScheduleStrategy
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)
 	case "DataExportInterval":

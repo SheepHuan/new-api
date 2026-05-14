@@ -312,6 +312,13 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)
 		}
+
+		requestQueueRoute := apiRouter.Group("/request_queue")
+		requestQueueRoute.Use(middleware.AdminAuth())
+		{
+			requestQueueRoute.GET("/logs", controller.GetRequestQueueLogs)
+		}
+
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())
 		{

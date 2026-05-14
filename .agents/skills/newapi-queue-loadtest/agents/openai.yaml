@@ -1,0 +1,4 @@
+interface:
+  display_name: "new-api Queue Load Test"
+  short_description: "Seed and stress-test local request queues"
+  default_prompt: "Use $newapi-queue-loadtest to start local OpenAI-compatible upstreams, seed queue-test users/channels, and run a concurrent queue load test."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "NewAPI Docker Push Commands"
+  short_description: "Emit Docker Hub publish commands"
+  default_prompt: "Use $newapi-docker-push-commands to output Docker commands for publishing version v1.2.3."
