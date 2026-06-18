@@ -43,6 +43,12 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  SettingsForm,
+  SettingsSwitchContent,
+  SettingsSwitchItem,
+} from '../components/settings-form-layout'
+import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { RateLimitVisualEditor } from './rate-limit-visual-editor'
@@ -149,81 +155,73 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
   }
 
   return (
-    <SettingsSection
-      title={t('Rate Limiting')}
-      description={t(
-        'Control request frequency to prevent abuse and manage system load.'
-      )}
-    >
+    <SettingsSection title={t('Rate Limiting')}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <FormField
-              control={form.control}
-              name='ModelRequestRateLimitEnabled'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Enable rate limiting')}
-                    </FormLabel>
-                    <FormDescription>
-                      {t(
-                        'This controls model request rate limiting. Web/API route throttling is configured by environment variables and may still return 429.'
-                      )}
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked)
-                        if (checked) {
-                          form.setValue('RequestQueueEnabled', false, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          })
-                        }
-                      }}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <SettingsForm onSubmit={form.handleSubmit(onSubmit)}>
+          <SettingsPageFormActions
+            onSave={form.handleSubmit(onSubmit)}
+            isSaving={updateOption.isPending}
+            saveLabel='Save rate limits'
+          />
+          <FormField
+            control={form.control}
+            name='ModelRequestRateLimitEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable rate limiting')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'This controls model request rate limiting. Web/API route throttling is configured by environment variables and may still return 429.'
+                    )}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                      if (checked) {
+                        form.setValue('RequestQueueEnabled', false, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    }}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name='RequestQueueEnabled'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Enable request scheduler')}
-                    </FormLabel>
-                    <FormDescription>
-                      {t(
-                        'Apply channel RPM limits before forwarding upstream.'
-                      )}
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked)
-                        if (checked) {
-                          form.setValue('ModelRequestRateLimitEnabled', false, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          })
-                        }
-                      }}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name='RequestQueueEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable request scheduler')}</FormLabel>
+                  <FormDescription>
+                    {t('Apply channel RPM limits before forwarding upstream.')}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                      if (checked) {
+                        form.setValue('ModelRequestRateLimitEnabled', false, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    }}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
 
           <div className='space-y-4 rounded-lg border p-4'>
             <div>
@@ -575,11 +573,7 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
               </FormItem>
             )}
           />
-
-          <Button type='submit' disabled={updateOption.isPending}>
-            {updateOption.isPending ? t('Saving...') : t('Save rate limits')}
-          </Button>
-        </form>
+        </SettingsForm>
       </Form>
     </SettingsSection>
   )
